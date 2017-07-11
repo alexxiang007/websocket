@@ -119,7 +119,7 @@ class WebSocketApp(object):
                 self.sock.ping()
 
     def run_forever(self, sockopt=None, sslopt=None,
-                    ping_interval=0, ping_timeout=None,
+                    ping_interval=30, ping_timeout=None,
                     http_proxy_host=None, http_proxy_port=None,
                     http_no_proxy=None, http_proxy_auth=None,
                     skip_utf8_validation=False,
