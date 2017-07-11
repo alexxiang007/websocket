@@ -1,10 +1,15 @@
+import sys
+sys.path.insert(0, '/home/pi/GitHub/')
+
 import websocket
 import time
-import sys
 import json
+from json import dump,loads
+import datetime
 import hashlib
 import zlib
 import base64
+from gmail import *
 
 api_key=''
 secret_key = ""
@@ -92,7 +97,9 @@ def futureRealTrades(api_key,secretkey):
 
 def on_open(self):
     #subscribe okcoin.com spot ticker
-    self.send("{'event':'addChannel','channel':'ok_sub_spotusd_btc_ticker','binary':'true'}")
+    #self.send("{'event':'addChannel','channel':'ok_sub_spotusd_btc_ticker','binary':'true'}")
+    
+    self.send("{'event':'addChannel','channel':'ok_sub_spotusd_eth_ticker','binary':'true'}")
 
     #subscribe okcoin.com future this_week ticker
     #self.send("{'event':'addChannel','channel':'ok_sub_futureusd_btc_ticker_this_week','binary':'true'}")
@@ -125,9 +132,30 @@ def on_open(self):
     #subscrbe future trades for self
     #futureRealTradesMsg = futureRealTrades(api_key,secret_key)
     #self.send(futureRealTradesMsg)
+alert_sent = false
+alert_interval = 60*60
+alert_time = 0
+
 def on_message(self,evt):
-    data = inflate(evt) #data decompress
-    print (data)
+    global alert_sent, alert_interval, alert_time
+    
+    try:
+        data = inflate(evt) #data decompress
+        high = (loads(data.decode('utf-8')))[0]['data']['high']
+        low = (loads(data.decode('utf-8')))[0]['data']['low']
+        last = (loads(data.decode('utf-8')))[0]['data']['last']
+        vol = (loads(data.decode('utf-8')))[0]['data']['vol']
+        time = (loads(data.decode('utf-8')))[0]['data']['timestamp']
+        time = datetime.datetime.fromtimestamp(time/1000-4*60*60)
+        print("last = {}, high = {}, low = {}, vol= {}, time = {}".format(last,high,low,vol,time))
+        if (high<=200) and ((alert_sent = true) or (alert_sent = false and time.time()-alert_time>=alert_interval())):
+            send_mail("Alert","ETH price lower than 250.")
+            alert_sent = true
+            alert_time = time.time()
+
+    except BaseException as e:
+        print(e)
+        
 def inflate(data):
     decompress = zlib.decompressobj(
             -zlib.MAX_WBITS  # see above
@@ -140,6 +168,7 @@ def on_error(self,evt):
     print (evt)
 
 def on_close(self,evt):
+    self.run_forever()
     print ('DISCONNECT')
 
 if __name__ == "__main__":
